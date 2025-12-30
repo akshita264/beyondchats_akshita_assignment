@@ -94,15 +94,28 @@ app.get('/api/articles', async (req, res) => {
 // PUT: Update article with LLM version 
 app.put('/api/articles/:id', async (req, res) => {
     const { id } = req.params;
-    const { updated_content } = req.body;
+    const { updated_content, reference_links } = req.body; 
+
     try {
-        await db.query(
-            'UPDATE articles SET updated_content = $1, is_updated = TRUE WHERE id = $2',
-            [updated_content, id]
-        );
+        // We use JSON.stringify to ensure the array is stored correctly as JSONB
+        const queryText = `
+            UPDATE articles 
+            SET updated_content = $1, 
+                reference_links = $2, 
+                is_updated = TRUE 
+            WHERE id = $3
+        `;
+        
+        await db.query(queryText, [
+            updated_content, 
+            JSON.stringify(reference_links), 
+            id
+        ]);
+
         res.json({ message: "Article updated successfully" });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("Database Update Error:", err.message);
+        res.status(500).json({ error: "Database update failed", details: err.message });
     }
 });
 
