@@ -7,7 +7,7 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/articles')
+    axios.get(import.meta.env.VITE_API_BASE_URL + '/api/articles')
       .then(res => {
         setArticles(res.data);
         setLoading(false);
