@@ -9,9 +9,16 @@ An automated system that scrapes legacy blog content, performs competitive resea
 
 ---
 
+## Tech Stacks Used 
+- **Frontend:** React, Vite, Tailwind CSS (Deployed on Vercel).
+- **Backend:** Node.js, Express.js (Deployed on Railway).
+- **Database:** Neon PostgreSQL.
+- **AI Engine:** Groq SDK (Llama-3.3-70b-versatile).
+- **Automation:** Integrated background workers in the server lifecycle.
+
 ## 🏗️ System Architecture & Data Flow
-
-
+![System Architecture](./screenshots/data_flow.png)
+*Visualizing the automated pipeline from Railway startup to AI generation and Frontend display.*
 
 1. **Scraper (Phase 1):** Scrapes 5 oldest articles from BeyondChats and stores them in PostgreSQL deployed on NEON.
 2. **Processor (Phase 2):** - Fetches articles via Internal CRUD API.
@@ -26,7 +33,7 @@ An automated system that scrapes legacy blog content, performs competitive resea
 
 ### Prerequisites
 - Node.js (v18+)
-- PostgreSQL Database
+- PostgreSQL Database deployed on NEON
 - API Keys: Serper.dev & Groq Cloud
 
 ### Backend Setup
@@ -34,12 +41,12 @@ An automated system that scrapes legacy blog content, performs competitive resea
 2. `npm install`
 3. Create `.env` with:
    ```env
-   DATABASE_URL=your_postgres_url
+   DATABASE_URL=your_neondb_postgres_url
    SERPER_API_KEY=your_key (Your Own keys)
    GROQ_API_KEY=your_key (Your own keys)
    PORT=5000
-4. Start Server: `node server.js`
-5. Run AI Processor: `node processor.js`
+4. Start Server and AI Compilation: `node server.js`
+5. The server will log: [Automation] Triggering startup scrape....
 
 ### Frontend Setup
 1. `cd frontend`
@@ -51,5 +58,10 @@ An automated system that scrapes legacy blog content, performs competitive resea
 - Anti-Bot Scraping: Uses custom headers to bypass scraping blocks on competitor blogs.
 - JSONB Storage: Efficiently stores reference arrays in PostgreSQL for frontend mapping.
 - Sticky Navbar: Responsive navigation that mirrors the BeyondChats brand identity.
+
+### 📸 Project Screenshots
+#### Frontend Interface
+![BeyondChats Blogs UI](./screenshots/ui_frontend.png)
+*The live frontend showing original scraped content vs. AI-enhanced blog posts*.
 
 
