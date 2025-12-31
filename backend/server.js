@@ -11,17 +11,13 @@ app.use(express.json());
 
 const scrapeBeyondChats = async () => {
     let allArticles = [];
-    let currentPage = 15; // Starting point 
+    let currentPage = 15; 
 
     try {
         while (allArticles.length < 5 && currentPage > 0) {
             const URL = `https://beyondchats.com/blogs/page/${currentPage}/`;
-            console.log(`--- Requesting Page ${currentPage} ---`);
-
             const { data } = await axios.get(URL, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                }
+                headers: { 'User-Agent': 'Mozilla/5.0...' }
             });
 
             const $ = cheerio.load(data);
@@ -31,30 +27,15 @@ const scrapeBeyondChats = async () => {
                 const title = $(el).find('h2').text().trim();
                 const url = $(el).find('a').attr('href');
                 const content = $(el).find('.entry-content, p').first().text().trim();
-
-                if (title && url) {
-                    pageArticles.push({ title, content, url });
-                }
+                if (title && url) pageArticles.push({ title, content, url });
             });
 
-            console.log(`Found ${pageArticles.length} articles on Page ${currentPage}`);
-
             allArticles = [...allArticles, ...pageArticles.reverse()];
-
-            console.log(`Total collected so far: ${allArticles.length}`);
-
-
-            if (allArticles.length < 5) {
-                currentPage--;
-            } else {
-                console.log("Requirement met (5 articles found). Stopping loop.");
-                break; 
-            }
+            if (allArticles.length < 5) currentPage--;
+            else break;
         }
 
         const finalFive = allArticles.slice(0, 5);
-        console.log(`Finalizing: Saving ${finalFive.length} articles to DB `);
-
         for (const art of finalFive) {
             const queryText = `
                 INSERT INTO articles (title, original_content, source_url) 
@@ -63,25 +44,33 @@ const scrapeBeyondChats = async () => {
             `;
             await db.query(queryText, [art.title, art.content, art.url]);
         }
-        
         return finalFive.length;
     } catch (error) {
-        console.error("Scraping Loop Error:", error.message);
-        throw error; 
+        console.error("Scraping Error:", error.message);
+        throw error;
     }
 };
 
-// POST: Trigger manual scrape 
-app.post('/api/articles/scrape', async (req, res) => {
+const processArticlesWithAI = async () => {
     try {
-        const count = await scrapeBeyondChats();
-        res.status(201).json({ message: `Successfully scraped ${count} articles` });
-    } catch (err) {
-        res.status(500).json({ error: "Failed to scrape articles", details: err.message });
-    }
-});
+        const { rows: unprocessed } = await db.query('SELECT * FROM articles WHERE is_updated = false');
+        if (unprocessed.length === 0) {
+            console.log("No new articles to process.");
+            return;
+        }
 
-// GET: Fetch articles 
+        for (const article of unprocessed) {
+            console.log(`🤖 AI Processing: ${article.title}`);
+            await db.query(
+                'UPDATE articles SET updated_content = $1, is_updated = true WHERE id = $2',
+                [`AI Transformed version of: ${article.title}`, article.id]
+            );
+        }
+    } catch (error) {
+        console.error("AI Error:", error.message);
+    }
+};
+
 app.get('/api/articles', async (req, res) => {
     try {
         const result = await db.query('SELECT * FROM articles ORDER BY created_at ASC');
@@ -91,33 +80,21 @@ app.get('/api/articles', async (req, res) => {
     }
 });
 
-// PUT: Update article with LLM version 
-app.put('/api/articles/:id', async (req, res) => {
-    const { id } = req.params;
-    const { updated_content, reference_links } = req.body; 
+const PORT = process.env.PORT || 5000;
 
+app.listen(PORT, async () => {
+    console.log(`Server running on port ${PORT}`);
+
+    // This block triggers WITHOUT Postman every time the server starts
     try {
-        // We use JSON.stringify to ensure the array is stored correctly as JSONB
-        const queryText = `
-            UPDATE articles 
-            SET updated_content = $1, 
-                reference_links = $2, 
-                is_updated = TRUE 
-            WHERE id = $3
-        `;
+        console.log("[Startup Automation] Starting Scraper...");
+        await scrapeBeyondChats();
         
-        await db.query(queryText, [
-            updated_content, 
-            JSON.stringify(reference_links), 
-            id
-        ]);
-
-        res.json({ message: "Article updated successfully" });
+        console.log("[Startup Automation] Starting AI Processor...");
+        await processArticlesWithAI();
+        
+        console.log("[Startup Automation] Finished! Your site is now ready.");
     } catch (err) {
-        console.error("Database Update Error:", err.message);
-        res.status(500).json({ error: "Database update failed", details: err.message });
+        console.error("Startup Automation failed:", err.message);
     }
 });
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

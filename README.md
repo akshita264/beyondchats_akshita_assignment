@@ -4,7 +4,8 @@ An automated system that scrapes legacy blog content, performs competitive resea
 
 ## 🔗 Project Links
 - **GitHub Repository:** https://github.com/akshita264/beyondchats_akshita_assignment
-- **Live Demo (Frontend):** [Insert your Vercel/Netlify URL here] 
+- **Live Demo (Frontend):** https://beyondchats-akshita-assignment.vercel.app/
+- **Backend (Deployed):** https://beyondchatsakshitaassignment-production.up.railway.app/
 
 ---
 
@@ -12,7 +13,7 @@ An automated system that scrapes legacy blog content, performs competitive resea
 
 
 
-1. **Scraper (Phase 1):** Scrapes 5 oldest articles from BeyondChats and stores them in PostgreSQL.
+1. **Scraper (Phase 1):** Scrapes 5 oldest articles from BeyondChats and stores them in PostgreSQL deployed on NEON.
 2. **Processor (Phase 2):** - Fetches articles via Internal CRUD API.
    - Queries **Serper.dev** for top 2 external competitors.
    - Scrapes competitor text and sends it to **Groq LLM** with original content.
