@@ -52,36 +52,28 @@ const scrapeBeyondChats = async () => {
 const processArticlesWithAI = async () => {
     try {
         const { rows: unprocessed } = await db.query('SELECT * FROM articles WHERE is_updated = false');
-        
-        if (unprocessed.length === 0) {
-            console.log("AI Status: Everything is already up to date.");
-            return;
-        }
+        if (unprocessed.length === 0) return;
 
         for (const article of unprocessed) {
-            console.log(`AI Generating Full Blog for: ${article.title}`);
+            if (!article.original_content) continue;
+
+            console.log(`🤖 AI Generating: ${article.title}`);
             const response = await axios.post(
                 'https://api.groq.com/openai/v1/chat/completions',
                 {
                     model: "mixtral-8x7b-32768",
-                    messages: [
-                        { role: "system", content: "You are a professional blog writer. Expand the provided content into a detailed, 3-paragraph blog post." },
-                        { role: "user", content: `Original content: ${article.original_content}` }
-                    ]
+                    messages: [{ role: "user", content: `Write a short blog post: ${article.original_content.substring(0, 1000)}` }]
                 },
                 { headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` } }
             );
 
-            const blogContent = response.data.choices[0].message.content;
-
             await db.query(
                 'UPDATE articles SET updated_content = $1, is_updated = true WHERE id = $2',
-                [blogContent, article.id]
+                [response.data.choices[0].message.content, article.id]
             );
-            console.log(`Finished: ${article.title}`);
         }
     } catch (error) {
-        console.error("AI Processor Error:", error.message);
+        console.error("Detailed AI Error:", error.response ? error.response.data : error.message);
     }
 };
 
