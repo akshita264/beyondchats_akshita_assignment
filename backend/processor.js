@@ -1,4 +1,5 @@
 const axios = require('axios');
+const db = require('./db');
 const cheerio = require('cheerio');
 const OpenAI = require('openai');
 require('dotenv').config();
@@ -8,12 +9,11 @@ const groq = new OpenAI({
     baseURL: "https://api.groq.com/openai/v1"
 });
 
-const API_BASE_URL = `http://localhost:${process.env.PORT || 5000}/api`;
+const API_BASE_URL = `https://beyondchatsakshitaassignment-production.up.railway.app/api`;
 
 async function processArticles() {
     try {
-        const response = await axios.get(`${API_BASE_URL}/articles`);
-        const articles = response.data.filter(a => !a.is_updated);
+        const { rows: articles } = await db.query('SELECT * FROM articles WHERE is_updated = false');
 
         if (articles.length === 0) {
             console.log("No new articles to process.");
