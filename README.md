@@ -15,6 +15,7 @@ An automated system that scrapes legacy blog content, performs competitive resea
 - **Database:** Neon PostgreSQL.
 - **AI Engine:** Groq SDK (Llama-3.3-70b-versatile).
 - **Automation:** Integrated background workers in the server lifecycle.
+- **Data-Flow Diagram:** Lucid
 
 ## 🏗️ System Architecture & Data Flow
 ![System Architecture](./screenshots/data_flow.png)
