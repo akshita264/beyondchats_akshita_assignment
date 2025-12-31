@@ -57,11 +57,11 @@ const processArticlesWithAI = async () => {
         for (const article of unprocessed) {
             if (!article.original_content) continue;
 
-            console.log(`🤖 AI Generating: ${article.title}`);
+            console.log(`AI Generating: ${article.title}`);
             const response = await axios.post(
                 'https://api.groq.com/openai/v1/chat/completions',
                 {
-                    model: "mixtral-8x7b-32768",
+                    model: "llama-3.3-70b-versatile",
                     messages: [{ role: "user", content: `Write a short blog post: ${article.original_content.substring(0, 1000)}` }]
                 },
                 { headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` } }
