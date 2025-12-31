@@ -9,20 +9,19 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+
 const scrapeBeyondChats = async () => {
     let allArticles = [];
     let currentPage = 15; 
-
     try {
         while (allArticles.length < 5 && currentPage > 0) {
             const URL = `https://beyondchats.com/blogs/page/${currentPage}/`;
             const { data } = await axios.get(URL, {
-                headers: { 'User-Agent': 'Mozilla/5.0...' }
+                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
             });
 
             const $ = cheerio.load(data);
             const pageArticles = [];
-
             $('article, .elementor-post').each((i, el) => {
                 const title = $(el).find('h2').text().trim();
                 const url = $(el).find('a').attr('href');
@@ -37,43 +36,58 @@ const scrapeBeyondChats = async () => {
 
         const finalFive = allArticles.slice(0, 5);
         for (const art of finalFive) {
-            const queryText = `
-                INSERT INTO articles (title, original_content, source_url) 
-                VALUES ($1, $2, $3) 
-                ON CONFLICT (source_url) DO NOTHING
-            `;
-            await db.query(queryText, [art.title, art.content, art.url]);
+            await db.query(
+                `INSERT INTO articles (title, original_content, source_url) 
+                 VALUES ($1, $2, $3) ON CONFLICT (source_url) DO NOTHING`,
+                [art.title, art.content, art.url]
+            );
         }
         return finalFive.length;
     } catch (error) {
         console.error("Scraping Error:", error.message);
-        throw error;
+        return 0;
     }
 };
 
 const processArticlesWithAI = async () => {
     try {
         const { rows: unprocessed } = await db.query('SELECT * FROM articles WHERE is_updated = false');
+        
         if (unprocessed.length === 0) {
-            console.log("No new articles to process.");
+            console.log("AI Status: Everything is already up to date.");
             return;
         }
 
         for (const article of unprocessed) {
-            console.log(`🤖 AI Processing: ${article.title}`);
+            console.log(`AI Generating Full Blog for: ${article.title}`);
+            const response = await axios.post(
+                'https://api.groq.com/openai/v1/chat/completions',
+                {
+                    model: "mixtral-8x7b-32768",
+                    messages: [
+                        { role: "system", content: "You are a professional blog writer. Expand the provided content into a detailed, 3-paragraph blog post." },
+                        { role: "user", content: `Original content: ${article.original_content}` }
+                    ]
+                },
+                { headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}` } }
+            );
+
+            const blogContent = response.data.choices[0].message.content;
+
             await db.query(
                 'UPDATE articles SET updated_content = $1, is_updated = true WHERE id = $2',
-                [`AI Transformed version of: ${article.title}`, article.id]
+                [blogContent, article.id]
             );
+            console.log(`Finished: ${article.title}`);
         }
     } catch (error) {
-        console.error("AI Error:", error.message);
+        console.error("AI Processor Error:", error.message);
     }
 };
 
 app.get('/api/articles', async (req, res) => {
     try {
-        const result = await db.query('SELECT * FROM articles ORDER BY created_at ASC');
+        const result = await db.query('SELECT * FROM articles ORDER BY created_at DESC');
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -83,17 +97,15 @@ app.get('/api/articles', async (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, async () => {
-    console.log(`Server running on port ${PORT}`);
-
-    // This block triggers WITHOUT Postman every time the server starts
+    console.log(`Server listening on port ${PORT}`);
     try {
-        console.log("[Startup Automation] Starting Scraper...");
-        await scrapeBeyondChats();
+        console.log("[Automation] Triggering startup scrape...");
+        await scrapeBeyondChats(); 
         
-        console.log("[Startup Automation] Starting AI Processor...");
-        await processArticlesWithAI();
+        console.log("[Automation] Triggering AI processing...");
+        await processArticlesWithAI(); 
         
-        console.log("[Startup Automation] Finished! Your site is now ready.");
+        console.log("Automation] All tasks complete. System is live!");
     } catch (err) {
         console.error("Startup Automation failed:", err.message);
     }
